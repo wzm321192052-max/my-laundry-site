@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>力净设备管理系统 2025</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html { scroll-behavior: auto; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+        .nav-item { position: relative; height: 64px; }
+        .main-link { display: flex; align-items: center; height: 100%; padding: 0 15px; color: white; cursor: pointer; transition: background 0.2s; }
+        .main-link:hover { background-color: #1e3a8a; }
+        .dropdown { display: none; position: absolute; top: 64px; left: 0; background: white; min-width: 170px; z-index: 1000; border-top: 3px solid #2563eb; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .nav-item:hover .dropdown { display: block; }
+        .sub-link { display: block; padding: 12px 20px; color: #374151; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+        .sub-link:hover { background-color: #eff6ff; color: #1e40af; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 pb-20 font-sans">
+
+    <nav class="bg-blue-900 h-16 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-[1400px] mx-auto px-4 h-full flex items-center">
+            <span class="font-bold text-xl mr-8 text-white italic">LJ 2025</span>
+            <div class="flex h-full" id="nav-links"></div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto p-8 space-y-24" id="main-content"></div>
+
+    <div id="infoModal" class="fixed inset-0 bg-black/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h2 id="modalTitle" class="text-2xl font-bold text-blue-900">设备详情</h2>
+                <div class="space-x-2">
+                    <button onclick="toggleEdit()" id="editBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">编辑内容</button>
+                    <button onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">关闭</button>
+                </div>
+            </div>
+            <div class="p-8 overflow-y-auto flex-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <div class="bg-gray-100 rounded-xl aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 relative">
+                            <img id="viewImg" src="" class="max-w-full max-h-full object-contain p-4">
+                            <div id="editImgInput" class="hidden absolute inset-0 bg-black/50 flex items-center justify-center p-4">
+                                <input type="text" id="imgUrlInput" placeholder="输入图片链接" class="w-full p-2 rounded">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <label class="font-bold text-blue-900">背景描述</label>
+                        <div id="viewDesc" class="text-sm text-gray-600"></div>
+                        <textarea id="editDesc" class="hidden w-full h-24 border p-2 rounded text-sm"></textarea>
+                        
+                        <label class="font-bold text-blue-900">技术参数</label>
+                        <div id="viewParams" class="bg-blue-50 p-4 rounded text-xs font-mono whitespace-pre-wrap"></div>
+                        <textarea id="editParams" class="hidden w-full h-40 border p-2 rounded text-xs font-mono"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div id="saveBar" class="hidden p-4 border-t bg-blue-50 text-right">
+                <button onclick="saveChanges()" class="bg-green-600 text-white px-8 py-2 rounded-lg font-bold">保存更改</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 完整型号数据
+        const data = [
+            { title: "1. 洗脱机", id: "cat-1", subs: [
+                { id: "cat-1-1", name: "(1) 电加热", color: "orange", list: ["XGQ-150FD","XGQ-120FD","XGQ-100FD","XGQ-70FD","XGQ-50FD","XGQ-30FD","XGQ-25FD","XGQ-20FD","XGQ-15FD"] },
+                { id: "cat-1-2", name: "(2) 蒸汽加热", color: "blue", list: ["XGQ-150F","XGQ-120F","XGQ-100F","XGQ-70F","XGQ-50F","XGQ-30F","XGQ-25F","XGQ-20F","XGQ-15F"] }
+            ]},
+            { title: "2. 前倾式", id: "cat-2", subs: [
+                { id: "cat-2-1", name: "(1) 电前倾", color: "orange", list: ["XGQ-150FDQ","XGQ-120FDQ"] },
+                { id: "cat-2-2", name: "(2) 蒸汽前倾", color: "blue", list: ["XGQ-150FQ","XGQ-120FQ","XGQ-100FQ"] }
+            ]},
+            { title: "3. 前后倾斜", id: "cat-3", subs: [{ id: "c3", name: "酒店/医疗", color: "blue", list: ["SXT-130FQB(酒店)","SXT-130FQC(医疗)"] }]},
+            { title: "4. 牛仔机", id: "cat-4", subs: [{ id: "c4", name: "工业洗", color: "blue", list: ["NSX-420"] }]},
+            { title: "5. 隔离洗", id: "cat-5", subs: [
+                { id: "cat-5-1", name: "(1) 蒸汽加热", color: "blue", list: ["GL-150F","GL-120F","GL-100F","GL-50F","GL-30F"] },
+                { id: "cat-5-2", name: "(2) 电加热", color: "orange", list: ["GL-150FD","GL-120FD","GL-100FD","GL-50FD","GL-30FD"] }
+            ]},
+            { title: "6. 卧洗机", id: "cat-6", subs: [
+                { id: "cat-6-1", name: "(1) 蒸汽加热", color: "blue", list: ["XGP-400W","XGP-300W","XGP-250W","XGP-200W","XGP-150W","XGP-100W","XGP-70W","XGP-50W","XGP-35W"] },
+                { id: "cat-6-2", name: "(2) 电加热", color: "orange", list: ["XGP-400WD","XGP-300WD","XGP-250WD","XGP-200WD","XGP-150WD","XGP-100WD","XGP-70WD","XGP-50WD","XGP-35WD"] }
+            ]},
+            { title: "7. 投币机", id: "cat-7", subs: [
+                { id: "cat-7-1", name: "(1) 蒸汽加热", color: "blue", list: ["XGQ-20T","XGQ-15T","XGQ-12T"] },
+                { id: "cat-7-2", name: "(2) 电加热", color: "orange", list: ["XGQ-20DT","XGQ-15DT","XGQ-12DT"] }
+            ]},
+            { title: "8. 脱水机", id: "cat-8", subs: [{ id: "c8", name: "工业脱水", color: "gray", list: ["TL-800","TL-500","TL-250","TL-200","TL-120","TL-100","TL-70","TL-50","TL-35","TL-25","TL-15"] }]}
+        ];
+
+        let detailsDB = {}; // 存储修改后的数据
+        let currentModel = null;
+        let isEdit = false;
+
+        function scrollToCenter(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - (window.innerHeight / 2) + (el.offsetHeight / 4), behavior: 'smooth' });
+        }
+
+        function openDetails(model) {
+            currentModel = model;
+            const info = detailsDB[model] || { img: "", desc: "点击编辑添加背景信息", params: "点击编辑添加参数" };
+            document.getElementById('modalTitle').innerText = model;
+            document.getElementById('viewImg').src = info.img || "https://via.placeholder.com/400?text=LJ+Laundry";
+            document.getElementById('viewDesc').innerText = info.desc;
+            document.getElementById('viewParams').innerText = info.params;
+            document.getElementById('infoModal').classList.remove('hidden');
+        }
+
+        function toggleEdit() {
+            isEdit = !isEdit;
+            const items = ['viewDesc','viewParams','editDesc','editParams','editImgInput','saveBar'];
+            items.forEach(id => document.getElementById(id).classList.toggle('hidden'));
+            if(isEdit) {
+                document.getElementById('editDesc').value = document.getElementById('viewDesc').innerText;
+                document.getElementById('editParams').value = document.getElementById('viewParams').innerText;
+                document.getElementById('imgUrlInput').value = document.getElementById('viewImg').src;
+                document.getElementById('editBtn').innerText = "取消";
+            } else {
+                document.getElementById('editBtn').innerText = "编辑内容";
+            }
+        }
+
+        function saveChanges() {
+            detailsDB[currentModel] = {
+                img: document.getElementById('imgUrlInput').value,
+                desc: document.getElementById('editDesc').value,
+                params: document.getElementById('editParams').value
+            };
+            openDetails(currentModel);
+            toggleEdit();
+        }
+
+        function closeModal() {
+            document.getElementById('infoModal').classList.add('hidden');
+            if(isEdit) toggleEdit();
+        }
+
+        function render() {
+            document.getElementById('nav-links').innerHTML = data.map(g => `
+                <div class="nav-item">
+                    <a class="main-link" onclick="scrollToCenter('${g.id}')">${g.title}</a>
+                    ${g.subs.length > 1 ? `<div class="dropdown">${g.subs.map(s => `<a class="sub-link" onclick="scrollToCenter('${s.id}')">${s.name}</a>`).join('')}</div>` : ''}
+                </div>
+            `).join('');
+
+            document.getElementById('main-content').innerHTML = data.map(g => `
+                <section id="${g.id}">
+                    <h2 class="text-3xl font-black text-blue-900 border-l-8 border-blue-900 pl-4 mb-8">${g.title}</h2>
+                    ${g.subs.map(s => `
+                        <div id="${s.id}" class="mb-10">
+                            <h3 class="font-bold text-lg mb-4 flex items-center"><span class="w-3 h-3 rounded-full mr-2 ${s.color==='orange'?'bg-orange-500':'bg-blue-500'}"></span>${s.name}</h3>
+                            <div class="product-grid">${s.list.map(m => `<div onclick="openDetails('${m}')" class="bg-white border hover:border-blue-500 p-5 rounded-lg shadow-sm text-center cursor-pointer hover:-translate-y-1 transition-all"><div class="text-[10px] text-gray-400 mb-1 font-mono uppercase">Info</div><div class="text-sm font-bold">${m}</div></div>`).join('')}</div>
+                        </div>
+                    `).join('')}
+                </section>
+            `).join('');
+        }
+        render();
+    </script>
+</body>
+</html>
